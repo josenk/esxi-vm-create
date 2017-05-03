@@ -1,0 +1,369 @@
+#!/usr/bin/python
+
+
+import argparse                   # Argument parser
+import datetime                   # For current Date/Time
+import os.path                    # To check if file exists
+import sys                        # For args
+import re                         # For regex
+import paramiko                   # For remote ssh
+import yaml
+import warnings
+
+from esxi_vm_functions import *
+
+#      Defaults and Variable setup
+ConfigData = setup_config()
+NAME = ""
+LOG = ConfigData['LOG']
+isDryRun = ConfigData['isDryRun']
+isVerbose = ConfigData['isVerbose']
+HOST = ConfigData['HOST']
+USER = ConfigData['USER']
+PASSWORD = ConfigData['PASSWORD']
+CPU = ConfigData['CPU']
+MEM = ConfigData['MEM']
+SIZE = int(ConfigData['SIZE'])
+DISKFORMAT = ConfigData['DISKFORMAT']
+VIRTDEV = ConfigData['VIRTDEV']
+STORE = ConfigData['STORE']
+NET = ConfigData['NET']
+ISO = ConfigData['ISO']
+GUESTOS = ConfigData['GUESTOS']
+
+
+
+#
+#      Process Arguments
+#
+parser = argparse.ArgumentParser(description='ESXi Create VM utility.')
+
+parser.add_argument('-d', '--dry', dest='isDryRunarg', action='store_true', help="Enable Dry Run mode  (" + str(isDryRun) + ")")
+parser.add_argument('-v', '--verbose', dest='isVerbosearg', action='store_true', help="Enable Verbose mode  (" + str(isVerbose) + ")")
+parser.add_argument("-H", "--Host", dest='HOST', type=str, help="ESXi Host  (" + str(HOST) + ")")
+parser.add_argument("-U", "--User", dest='USER', type=str, help="ESXi Host username  (" + str(USER) + ")")
+parser.add_argument("-P", "--Password", dest='PASSWORD', type=str, help="ESXi Host password  (*****)")
+parser.add_argument("-n", "--name", dest='NAME', type=str, help="VM name")
+parser.add_argument("-c", "--cpu", dest='CPU', type=int, help="Number of vCPUS  (" + str(CPU) + ")")
+parser.add_argument("-m", "--mem", type=int, help="Memory in GB  (" + str(MEM) + ")")
+parser.add_argument("-s", "--size", dest='SIZE', type=str, help="Size of virt disk  (" + str(SIZE) + ")")
+parser.add_argument("-i", "--iso", dest='ISO', type=str, help="CDROM ISO Path | None  (" + str(ISO) + ")")
+parser.add_argument("-N", "--net", dest='NET', type=str, help="Network Interface | None  (" + str(NET) + ")")
+parser.add_argument("-S", "--store", dest='STORE', type=str, help="vmfs Store | LeastUsed  ("  + str(STORE) + ")")
+parser.add_argument("-g", "--guestos", dest='GUESTOS', type=str, help="Guest OS. (" + str(GUESTOS) + ")")
+parser.add_argument("-u", "--updateDefaults", dest='UPDATE', action='store_true', help="Update Default VM settings stored in ~/.esxi-vm.yml")
+
+args = parser.parse_args()
+
+if args.isDryRunarg:
+    isDryRun = True
+if args.isVerbosearg:
+    isVerbose = True
+if args.HOST:
+   HOST=args.HOST
+if args.USER:
+    USER=args.USER
+if args.PASSWORD:
+    PASSWORD=args.PASSWORD
+if args.NAME:
+    NAME=args.NAME
+if args.CPU:
+    CPU=int(args.CPU)
+if args.mem:
+    MEM=int(args.mem)
+if args.SIZE:
+    SIZE=int(args.SIZE)
+if args.ISO:
+    ISO=args.ISO
+if args.NET:
+    NET=args.NET
+if args.STORE:
+    STORE=args.STORE
+if STORE == "":
+    STORE = "LeastUsed"
+if args.GUESTOS:
+    GUESTOS=args.GUESTOS
+
+if args.UPDATE:
+    print "Saving new Defaults to ~/.esxi-vm.yml"
+    ConfigData['isDryRun'] = isDryRun
+    ConfigData['isVerbose'] = isVerbose
+    ConfigData['HOST'] = HOST
+    ConfigData['USER'] = USER
+    ConfigData['PASSWORD'] = PASSWORD
+    ConfigData['CPU'] = CPU
+    ConfigData['MEM'] = MEM
+    ConfigData['SIZE'] = SIZE
+    ConfigData['DISKFORMAT'] = DISKFORMAT
+    ConfigData['VIRTDEV'] = VIRTDEV
+    ConfigData['STORE'] = STORE
+    ConfigData['NET'] = NET
+    ConfigData['ISO'] = ISO
+    ConfigData['GUESTOS'] = GUESTOS
+    SaveConfig(ConfigData)
+    if NAME == "":
+        sys.exit(0)
+
+#
+#      main()
+#
+# print "Current Date " + theCurrDateTime()
+CheckHasErrors = False
+
+if NAME == "":
+    print "ERROR: Missing required option --name"
+    sys.exit(1)
+
+try:
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(HOST, username=USER, password=PASSWORD)
+
+    (stdin, stdout, stderr) = ssh.exec_command("esxcli system version get |grep Version")
+    type(stdin)
+    if re.match("Version", stdout.readlines()) is not None:
+        print "Unable to access ESXi Host: %s, username: %s" % (HOST, USER)
+        sys.exit(1)
+except:
+    pass
+
+#
+#      Get list of DataStores, store in VOLUMES
+#
+LeastUsedDS = ""
+try:
+    (stdin, stdout, stderr) = ssh.exec_command("esxcli storage filesystem list |grep '/vmfs/volumes/.*true  VMFS' |sort -nk7")
+    type(stdin)
+    VOLUMES = {}
+    for line in stdout.readlines():
+        splitLine = line.split()
+        VOLUMES[splitLine[0]] = splitLine[1]
+        LeastUsedDS = splitLine[1]
+except:
+    e = sys.exc_info()[0]
+    print "The Error is " + str(e)
+    sys.exit(1)
+
+if STORE == "LeastUsed":
+    STORE = LeastUsedDS
+
+
+#
+#      Get list of Networks available, store in VMNICS
+#
+try:
+    (stdin, stdout, stderr) = ssh.exec_command("esxcli network vswitch standard list|grep Portgroups|sed 's/^   Portgroups: //g'")
+    type(stdin)
+    VMNICS = []
+    for line in stdout.readlines():
+        splitLine = re.split(',|\n', line)
+        VMNICS.append(splitLine[0])
+except:
+    e = sys.exc_info()[0]
+    print "The Error is " + str(e)
+    sys.exit(1)
+
+#
+#      Get from ESXi host if ISO exists
+#
+ISOfound = False
+if ISO == "None":
+    ISO = ""
+if ISO != "":
+    try:
+        (stdin, stdout, stderr) = ssh.exec_command("ls " + str(ISO))
+        type(stdin)
+        if not stdout.readlines() and stderr.readlines():
+            ISOfound = True
+    except:
+        e = sys.exc_info()[0]
+        print "The Error is " + str(e)
+        sys.exit(1)
+#
+#      Check if VM already exists
+#
+VMID = -1
+try:
+    (stdin, stdout, stderr) = ssh.exec_command("vim-cmd vmsvc/getallvms")
+    type(stdin)
+    for line in stdout.readlines():
+        splitLine = line.split()
+        if NAME == splitLine[1]:
+            VMID = splitLine[0]
+            print "ERROR: VM " + NAME + " already exists."
+            CheckHasErrors = True
+except:
+        e = sys.exc_info()[0]
+        print "The Error is " + str(e)
+        sys.exit(1)
+
+#
+#      Do checks here
+#
+
+#  Check CPU
+if CPU < 1 or CPU > 128:
+    print str(CPU) + " CPU out of range. [1-128]"
+    CheckHasErrors = True
+
+#  Check MEM
+if MEM < 1 or MEM > 4080:
+    print str(MEM) + "GB Memory out of range. [1-4080]"
+    CheckHasErrors = True
+
+#  Check SIZE
+if SIZE < 1 or SIZE > 63488:
+    print "Virtual Disk size " + str(SIZE) + "GB out of range. [1-63488]"
+    CheckHasErrors = True
+
+#  Check STORE
+V = []
+DSPATH=""
+DSSTORE=""
+for Path in VOLUMES:
+    V.append(VOLUMES[Path])
+    if STORE == Path or STORE == VOLUMES[Path]:
+        DSPATH = Path
+        DSSTORE = VOLUMES[Path]
+
+if DSSTORE not in V:
+    print "ERROR: Disk Storage " + STORE + " doesn't exist. "
+    print "    Available Disk Stores: " + str(V)
+    print "    LeastUsed Disk Store : " + str(LeastUsedDS)
+    CheckHasErrors = True
+
+#  Check NIC  (NIC record)
+if (NET not in VMNICS) and (NET != "None"):
+    print "ERROR: Virtual NIC " + NET + " doesn't exist."
+    print "    Available VM NICs: " + str(VMNICS) + " or 'None'"
+    CheckHasErrors = True
+
+#  Check ISO exists
+if ISO != "" and not ISOfound:
+    print "ERROR: ISO " + ISO + " not found.  Use full path to ISO"
+    CheckHasErrors = True
+
+#  Check if DSPATH/NAME aready exists
+FullPathExists = False
+try:
+    FullPath = DSPATH + "/" + NAME
+    (stdin, stdout, stderr) = ssh.exec_command("ls -d " + FullPath)
+    type(stdin)
+    if stdout.readlines() and not stderr.readlines():
+        print "ERROR: Directory " + FullPath + " already exists."
+        CheckHasErrors = True
+except:
+    pass
+
+#
+#      Exit if there are any errors
+#
+if CheckHasErrors:
+    sys.exit(1)
+
+#
+#      Create the VM
+#
+VMX = []
+VMX.append('config.version = "8"')
+VMX.append('virtualHW.version = "8"')
+VMX.append('vmci0.present = "TRUE"')
+VMX.append('displayName = "' + NAME + '"')
+VMX.append('floppy0.present = "FALSE"')
+VMX.append('numvcpus = "' + str(CPU) + '"')
+VMX.append('scsi0.present = "TRUE"')
+VMX.append('scsi0.sharedBus = "none"')
+VMX.append('scsi0.virtualDev = "pvscsi"')
+VMX.append('memsize = "' + str(MEM * 1024) + '"')
+VMX.append('scsi0:0.present = "TRUE"')
+VMX.append('scsi0:0.fileName = "' + NAME + '.vmdk"')
+VMX.append('scsi0:0.deviceType = "scsi-hardDisk"')
+if ISO == "":
+    VMX.append('ide1:0.present = "TRUE"')
+    VMX.append('ide1:0.fileName = "emptyBackingString"')
+    VMX.append('ide1:0.deviceType = "atapi-cdrom"')
+    VMX.append('ide1:0.startConnected = "FALSE"')
+    VMX.append('ide1:0.clientDevice = "TRUE"')
+else:
+    VMX.append('ide1:0.present = "TRUE"')
+    VMX.append('ide1:0.fileName = "' + ISO + '"')
+    VMX.append('ide1:0.deviceType = "cdrom-image"')
+VMX.append('pciBridge0.present = "TRUE"')
+VMX.append('pciBridge4.present = "TRUE"')
+VMX.append('pciBridge4.virtualDev = "pcieRootPort"')
+VMX.append('pciBridge4.functions = "8"')
+VMX.append('pciBridge5.present = "TRUE"')
+VMX.append('pciBridge5.virtualDev = "pcieRootPort"')
+VMX.append('pciBridge5.functions = "8"')
+VMX.append('pciBridge6.present = "TRUE"')
+VMX.append('pciBridge6.virtualDev = "pcieRootPort"')
+VMX.append('pciBridge6.functions = "8"')
+VMX.append('pciBridge7.present = "TRUE"')
+VMX.append('pciBridge7.virtualDev = "pcieRootPort"')
+VMX.append('pciBridge7.functions = "8"')
+VMX.append('guestOS = "' + GUESTOS + '"')
+if NET != "None":
+    VMX.append('ethernet0.virtualDev = "vmxnet3"')
+    VMX.append('ethernet0.present = "TRUE"')
+    VMX.append('ethernet0.networkName = "' + NET + '"')
+    VMX.append('ethernet0.addressType = "generated"')
+
+if isDryRun:
+    print "Dry Run Enabled.   No VM created..."
+    sys.exit(0)
+else:
+    try:
+
+        # Create NAME.vmx
+        if isVerbose:
+            print "Create " + NAME + ".vmx file"
+        MyVM = FullPath + "/" + NAME
+        (stdin, stdout, stderr) = ssh.exec_command("mkdir " + FullPath )
+        type(stdin)
+        for line in VMX:
+            (stdin, stdout, stderr) = ssh.exec_command("echo " + line + " >>" + MyVM + ".vmx")
+            type(stdin)
+
+        # Create vmdk
+        if isVerbose:
+            print "Create " + NAME + ".vmdk file"
+        (stdin, stdout, stderr) = ssh.exec_command("vmkfstools -c " + str(SIZE) + "G -d " + DISKFORMAT + " " + MyVM + ".vmdk")
+        type(stdin)
+
+        # Register VM
+        if isVerbose:
+            print "Register VM"
+        (stdin, stdout, stderr) = ssh.exec_command("vim-cmd solo/registervm " + MyVM + ".vmx")
+        type(stdin)
+        Jnk = stdout.readlines()
+        VMID = int(Jnk[0])
+        
+        # Power on VM
+        if isVerbose:
+            print "Power ON VM"
+        (stdin, stdout, stderr) = ssh.exec_command("vim-cmd vmsvc/power.on " + str(VMID))
+        type(stdin)
+        if stderr.readlines():
+            print "Error Power.on VM."
+            sys.exit(1)
+    except:
+        print "There was an error creating the VM!"
+        sys.exit(1)
+
+#      Print Summary
+print "\nCreate VM Success"
+print "ESXi Host: " + HOST
+print "VM NAME: " + NAME
+print "vCPU: " + str(CPU)
+print "Memory: " + str(MEM) + "GB"
+print "VM Disk: " + str(SIZE) + "GB"
+if isVerbose:
+    print "Format: " + DISKFORMAT
+print "DS Store: " + DSSTORE
+print "Network: " + NET
+if ISO:
+    print "ISO: " + ISO
+if isVerbose:
+    print "Guest OS: " + GUESTOS
+
+

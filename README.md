@@ -8,21 +8,28 @@ Usage
 -----
 
   The only command line required paramater is the VM name (-n), all other command line arguments are optional.
-  Defaults are stored in your home directory in ~/.esxi-vm.yml.   You can edit this file directly, or you can use the tool to update the defaults by specifying --updateDefaults.
-  Some basic sanity checks are done on the ESXi host before creating the VM.  The Verbose (-v) option will give you a little more details in the creation process.  If an invalid Disk Stores or Network Interface is specified, the available devices will be shown in the error message. The tool will not show the list of available ISO images, and Guest OS types.  CPU, Memory, Virtual Disk sizes are based on ESXi 6.0 limitations.
-  The Dry run (--dry) option will go through all the sanity checks, but will not create the VM.  
-  By default the Disk Store is set to "LeastUsed".  This will use the Disk Store with the most free space (in bytes).
-  By default the ISO or Network are set to "None".
-  By default the VM is powered on. If an ISO was specified, then it will boot the ISO image.  Otherwise, the VM will attempt a PXE boot.  Use COBBLER, Foreman, Razor, or your favorite provisioning tools.
 
+  Defaults are stored in your home directory in ~/.esxi-vm.yml.   You can edit this file directly, or you can use the tool to update the defaults by specifying --updateDefaults.
+
+  Some basic sanity checks are done on the ESXi host before creating the VM.  The Verbose (-v) option will give you a little more details in the creation process.  If an invalid Disk Stores or Network Interface is specified, the available devices will be shown in the error message. The tool will not show the list of available ISO images, and Guest OS types.  CPU, Memory, Virtual Disk sizes are based on ESXi 6.0 limitations.
+
+  The Dry run (--dry) option will go through all the sanity checks, but will not create the VM.  
+
+  By default the Disk Store is set to "LeastUsed".  This will use the Disk Store with the most free space (in bytes).
+
+  By default the ISO or Network are set to "None".
+
+  By default the VM is powered on. If an ISO was specified, then it will boot the ISO image.  Otherwise, the VM will attempt a PXE boot.  Use COBBLER, Foreman, Razor, or your favorite provisioning tools.
 
 
 Requirements
 ------------
 
-  -You must enable ssh access on your ESXi server. 
-  -It's HIGHLY RECOMMENDED to use password-less authentication by copying your ssh public keys to the ESXi host, otherwise your ESXi root password could be stored in clear-text in your home directory.
-  -Python and paramiko is a software requirement.
+  You must enable ssh access on your ESXi server. 
+
+  It's HIGHLY RECOMMENDED to use password-less authentication by copying your ssh public keys to the ESXi host, otherwise your ESXi root password could be stored in clear-text in your home directory.
+
+  Python and paramiko is a software requirement.
   
 ```
         yum -y install python-paramiko

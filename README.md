@@ -17,9 +17,11 @@ Usage
 
   By default the Disk Store is set to "LeastUsed".  This will use the Disk Store with the most free space (in bytes).
 
-  By default the ISO and Network are set to "None".
+  By default the ISO is set to "None".  Specify the full path to the ISO image.   If you specify just the ISO image (no path), the system will attempt to find the ISO image on the DataStores.
 
-  By default the VM is powered on. If an ISO was specified, then it will boot the ISO image.  Otherwise, the VM will attempt a PXE boot.  Use COBBLER, Foreman, Razor, or your favorite provisioning tools.
+  By default the Network set set to "None". A full or partial MAC address can be specified. A partial MAC address argument would be 3 Hex pairs which would then be prepended by VMware's OEM "00:50:56".
+
+  By default the VM is powered on. If an ISO was specified, then it will boot the ISO image.  Otherwise, the VM will attempt a PXE boot if a Network Interface was specified.  You could customize the ISO image to specify the kickstart file, or PXE boot using COBBLER, Foreman, Razor, or your favorite provisioning tool. 
 
 
 Requirements
@@ -61,6 +63,7 @@ Command Line Args
           -s SIZE, --size SIZE  Size of virt disk (20)
           -i ISO, --iso ISO     CDROM ISO Path | None (None)
           -N NET, --net NET     Network Interface | None (None)
+          -M MAC, --MAC MAC     MAC address
           -S STORE, --store STORE
                                 vmfs Store | LeastUsed (DS_3TB_m)
           -g GUESTOS, --guestos GUESTOS

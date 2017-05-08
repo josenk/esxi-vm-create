@@ -173,8 +173,18 @@ if ISO != "":
     try:
         (stdin, stdout, stderr) = ssh.exec_command("ls " + str(ISO))
         type(stdin)
-        if not stdout.readlines() and stderr.readlines():
+        if stdout.readlines() and not stderr.readlines():
             ISOfound = True
+        else:
+            #  If ISO has no "/", try to find the ISO
+            if not re.match('/', ISO):
+                #(stdin, stdout, stderr) = ssh.exec_command("find /vmfs/volumes/ -type f -name " + ISO + "-exec sh -c 'echo $1; kill $PPID' sh {} 2>/dev/null \;")
+                (stdin, stdout, stderr) = ssh.exec_command("find /vmfs/volumes/ -type f -name " + ISO )
+                type(stdin)
+                FoundISOPath = str(stdout.readlines())
+                print "FoundISOPath: " + str(FoundISOPath)
+                if re.match('/', FoundISOPath):
+                    ISO = FoundISOPath
     except:
         e = sys.exc_info()[0]
         print "The Error is " + str(e)

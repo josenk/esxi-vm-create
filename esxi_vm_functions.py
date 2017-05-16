@@ -18,20 +18,45 @@ def setup_config():
     #   System wide defaults
     #
     ConfigData = dict(
-        LOG="~/esxi-vm.log",
+
+        #   Your logfile
+        LOG= os.path.expanduser("~") + "/esxi-vm.log",
+
+        #  Enable/Disable dryrun by default
         isDryRun=False,
+
+        #  Enable/Disable Verbose output by default
         isVerbose=False,
+
+        #  Enable/Disable exit summary by default
+        isSummary=False,
+
+        #  ESXi host/IP, root login & password
         HOST="esxi",
         USER="root",
         PASSWORD="",
+
+        #  Default number of vCPU's, GB Mem, & GB boot disk
         CPU=2,
         MEM=4,
-        SIZE=20,
+        HDISK=20,
+
+        #  Default Disk format thin, zeroedthick, eagerzeroedthick
         DISKFORMAT="thin",
+
+        #  Virtual Disk device type
         VIRTDEV="pvscsi",
+
+        #  Specify default Disk store to "LeastUsed"
         STORE="LeastUsed",
+
+        #  Default Network Interface (vswitch)
         NET="None",
+
+        #  Default ISO
         ISO="None",
+
+        #  Default GuestOS type.  (See VMware documentation for all available options)
         GUESTOS="centos-64"
     )
 
@@ -39,6 +64,7 @@ def setup_config():
 
     #
     # Get ConfigData from ConfigDataFile, then merge.
+    #
     if os.path.exists(ConfigDataFileLocation):
         FromFileConfigData = yaml.safe_load(open(ConfigDataFileLocation))
         ConfigData.update(FromFileConfigData)

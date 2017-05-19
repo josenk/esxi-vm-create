@@ -95,22 +95,22 @@ Saving new Defaults to ~/.esxi-vm.yml
 
   Create a new VM named testvm01 using all defaults from ~/.esxi-vm.yml.
 ```
-        ./esxi-vm-create -n testvm01
+./esxi-vm-create -n testvm01 --summary
 
-        Create VM Success
-        ESXi Host: esxi
-        VM NAME: testvm01
-        vCPU: 2
-        Memory: 4GB
-        VM Disk: 20GB
-        DS Store: DS_4TB
-        Network: None
+Create VM Success:
+VM NAME: testvm01
+vCPU: 2
+Memory: 4GB
+VM Disk: 20GB
+DS Store: DS_4TB
+Network: None
+
 ```
 
   Change default number of vCPUs to 4, Memory to 8GB and vDisk size to 40GB.
 ```
-        ./esxi-vm-create -c 4 -m 8 -s 40 -u
-        Saving new Defaults to ~/.esxi-vm.yml
+./esxi-vm-create -c 4 -m 8 -s 40 -u
+Saving new Defaults to ~/.esxi-vm.yml
 ```
 
   Create a new VM named testvm02 using new defaults from ~/.esxi-vm.yml and specifying a Network interface and partial MAC.
@@ -142,9 +142,9 @@ Power ON VM
 Create VM Success:
 ESXi Host: esxi
 VM NAME: testvm03
-vCPU: 2
-Memory: 4GB
-VM Disk: 20GB
+vCPU: 4
+Memory: 8GB
+VM Disk: 40GB
 Format: thin
 DS Store: DS_3TB_m
 Network: 192.168.1
@@ -165,9 +165,9 @@ Power ON VM
 Create VM Success:
 ESXi Host: esxi
 VM NAME: testvm04
-vCPU: 2
-Memory: 4GB
-VM Disk: 20GB
+vCPU: 4
+Memory: 8GB
+VM Disk: 40GB
 Format: thin
 DS Store: DS_3TB_m
 Network: 192.168.1

@@ -153,6 +153,31 @@ MAC: 00:0c:29:32:63:92
 00:0c:29:32:63:92
 ```
 
+  Create a new VM named testvm04 specifying an ISO file to boot.  
+```
+./esxi-vm-create -n testvm04 --summary --iso CentOS-7-x86_64-Minimal-1611.iso
+FoundISOPath: /vmfs/volumes/5430094d-5a4fa180-4962-0017a45127e2/ISO/CentOS-7-x86_64-Minimal-1611.iso
+Create testvm04.vmx file
+Create testvm04.vmdk file
+Register VM
+Power ON VM
+
+Create VM Success:
+ESXi Host: esxi
+VM NAME: testvm04
+vCPU: 2
+Memory: 4GB
+VM Disk: 20GB
+Format: thin
+DS Store: DS_3TB_m
+Network: 192.168.1
+ISO: /vmfs/volumes/5430094d-5a4fa180-4962-0017a45127e2/ISO/CentOS-7-x86_64-Minimal-1611.iso
+Guest OS: centos-64
+MAC: 00:0c:29:ea:a0:42
+00:0c:29:ea:a0:42
+
+```
+
 License
 -------
 

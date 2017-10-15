@@ -306,15 +306,19 @@ except:
 #      Create the VM
 #
 VMX = []
+VMX.append('bios.bootRetry.delay = "10"')
 VMX.append('config.version = "8"')
-VMX.append('virtualHW.version = "8"')
+VMX.append('virtualHW.version = "13"')
 VMX.append('vmci0.present = "TRUE"')
 VMX.append('displayName = "' + NAME + '"')
 VMX.append('floppy0.present = "FALSE"')
 VMX.append('numvcpus = "' + str(CPU) + '"')
+VMX.append('nvram = "' + NAME + '.nvram"')
 VMX.append('scsi0.present = "TRUE"')
 VMX.append('scsi0.sharedBus = "none"')
-VMX.append('scsi0.virtualDev = "pvscsi"')
+VMX.append('scsi0.virtualDev = "lsilogic"')
+VMX.append('svga.autodetect = "TRUE"')
+VMX.append('svga.present = "TRUE"')
 VMX.append('memsize = "' + str(MEM * 1024) + '"')
 VMX.append('scsi0:0.present = "TRUE"')
 VMX.append('scsi0:0.fileName = "' + NAME + '.vmdk"')
@@ -329,6 +333,10 @@ else:
     VMX.append('ide1:0.present = "TRUE"')
     VMX.append('ide1:0.fileName = "' + ISO + '"')
     VMX.append('ide1:0.deviceType = "cdrom-image"')
+
+VMX.append('sata0.pciSlotNumber = "33"')
+VMX.append('sata0.present = "TRUE"')
+
 VMX.append('pciBridge0.present = "TRUE"')
 VMX.append('pciBridge4.present = "TRUE"')
 VMX.append('pciBridge4.virtualDev = "pcieRootPort"')
@@ -342,11 +350,36 @@ VMX.append('pciBridge6.functions = "8"')
 VMX.append('pciBridge7.present = "TRUE"')
 VMX.append('pciBridge7.virtualDev = "pcieRootPort"')
 VMX.append('pciBridge7.functions = "8"')
+
+VMX.append('powerType.powerOff = "default"')
+VMX.append('powerType.reset = "default"')
+VMX.append('powerType.suspend = "soft"')
+VMX.append('RemoteDisplay.maxConnections = "-1"')
+
+VMX.append('sched.cpu.affinity = "all"')
+VMX.append('sched.cpu.latencySensitivity = "normal"')
+VMX.append('sched.cpu.min = "0"')
+VMX.append('sched.cpu.shares = "normal"')
+VMX.append('sched.cpu.units = "mhz"')
+VMX.append('sched.mem.min = "0"')
+VMX.append('sched.mem.minSize = "0"')
+VMX.append('sched.mem.shares = "normal"')
+VMX.append('sched.scsi0:0.shares = "normal"')
+VMX.append('sched.scsi0:0.throughputCap = "off"')
+
+VMX.append('tools.upgrade.policy = "manual"')
+VMX.append('toolScripts.afterPowerOn = "TRUE"')
+VMX.append('toolScripts.afterResume = "TRUE"')
+VMX.append('toolScripts.beforePowerOff = "TRUE"')
+VMX.append('toolScripts.beforeSuspend = "TRUE"')
+
 VMX.append('guestOS = "' + GUESTOS + '"')
 if NET != "None":
     VMX.append('ethernet0.virtualDev = "vmxnet3"')
     VMX.append('ethernet0.present = "TRUE"')
     VMX.append('ethernet0.networkName = "' + NET + '"')
+    VMX.append('ethernet0.uptCompatibility = "TRUE"')
+    VMX.append('ethernet0.wakeOnPcktRcv = "FALSE"')
     if MAC == "":
         VMX.append('ethernet0.addressType = "generated"')
     else:

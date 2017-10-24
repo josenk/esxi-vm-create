@@ -26,7 +26,7 @@ Usage
 
   By default the Network set set to "None". A full or partial MAC address can be specified. A partial MAC address argument would be 3 Hex pairs which would then be prepended by VMware's OEM "00:50:56".
 
-  By default the VM is powered on. If an ISO was specified, then it will boot the ISO image.  Otherwise, the VM will attempt a PXE boot if a Network Interface was specified.  You could customize the ISO image to specify the kickstart file, or PXE boot using COBBLER, Foreman, Razor, or your favorite provisioning tool. 
+  By default the VM is powered on. If an ISO was specified, then it will boot the ISO image.  Otherwise, the VM will attempt a PXE boot if a Network Interface was specified.  You could customize the ISO image to specify the kickstart file, or PXE boot using COBBLER, Foreman, Razor, or your favorite provisioning tool.
 
   To help with automated provisioning, the script will output the full MAC address and exit code 0 on success.  You can specify --summary to get a more detailed summary of the VM that was created.
 
@@ -34,12 +34,12 @@ Usage
 Requirements
 ------------
 
-  You must enable ssh access on your ESXi server.   The VMware VIX API tools are not required.
+  You must enable ssh access on your ESXi server.  Google 'how to enable ssh access on esxi' for instructions.   The VMware VIX API tools are not required.
 
   It's HIGHLY RECOMMENDED to use password-less authentication by copying your ssh public keys to the ESXi host, otherwise your ESXi root password could be stored in clear-text in your home directory.
 
   Python and paramiko is a software requirement.
-  
+
 ```
 yum -y install python python-paramiko
 ```
@@ -50,9 +50,11 @@ Command Line Args
 
 ```
 ./esxi-vm-create --help
+
 usage: esxi-vm-create [-h] [-d] [-H HOST] [-U USER] [-P PASSWORD] [-n NAME]
                       [-c CPU] [-m MEM] [-v HDISK] [-i ISO] [-N NET] [-M MAC]
-                      [-S STORE] [-g GUESTOS] [-V] [--summary] [-u]
+                      [-S STORE] [-g GUESTOS] [-o VMXOPTS] [-V] [--summary]
+                      [-u]
 
 ESXi Create VM utility.
 
@@ -65,20 +67,21 @@ optional arguments:
                         ESXi Host password (*****)
   -n NAME, --name NAME  VM name
   -c CPU, --cpu CPU     Number of vCPUS (2)
-  -m MEM, --mem MEM     Memory in GB (2)
+  -m MEM, --mem MEM     Memory in GB (4)
   -v HDISK, --vdisk HDISK
-                        Size of virt hdisk (12)
+                        Size of virt hdisk (20)
   -i ISO, --iso ISO     CDROM ISO Path | None (None)
-  -N NET, --net NET     Network Interface | None (192.168.1)
+  -N NET, --net NET     Network Interface | None (None)
   -M MAC, --mac MAC     MAC address
   -S STORE, --store STORE
-                        vmfs Store | LeastUsed (DS_3TB_m)
+                        vmfs Store | LeastUsed (LeastUsed)
   -g GUESTOS, --guestos GUESTOS
                         Guest OS. (centos-64)
+  -o VMXOPTS, --options VMXOPTS
+                        Comma list of VMX Options.
   -V, --verbose         Enable Verbose mode (False)
   --summary             Display Summary (False)
   -u, --updateDefaults  Update Default VM settings stored in ~/.esxi-vm.yml
-
 ```
 
 
@@ -178,6 +181,12 @@ MAC: 00:0c:29:ea:a0:42
 
 ```
 
+  Merge/Add extra VMX options, saved as default.
+```
+./esxi-vm-create -o 'floppy0.present  = "TRUE",svga.autodetect = "TRUE",svga.present = "TRUE"' -u
+Saving new Defaults to ~/.esxi-vm.yml
+```
+
 License
 -------
 
@@ -202,4 +211,3 @@ Support
   Website : http://www.jintegrate.co
 
   github  : http://github.com/josenk/
-

@@ -57,7 +57,10 @@ def setup_config():
         ISO="None",
 
         #  Default GuestOS type.  (See VMware documentation for all available options)
-        GUESTOS="centos-64"
+        GUESTOS="centos-64",
+
+        # Extra VMX options
+        VMXOPTS=""
     )
 
     ConfigDataFileLocation = os.path.expanduser("~") + "/.esxi-vm.yml"
@@ -112,4 +115,3 @@ def float2human(num):
         return '0 bytes'
     if num == 1:
         return '1 byte'
-

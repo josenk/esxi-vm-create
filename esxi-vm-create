@@ -31,6 +31,7 @@ STORE = ConfigData['STORE']
 NET = ConfigData['NET']
 ISO = ConfigData['ISO']
 GUESTOS = ConfigData['GUESTOS']
+VMXOPTS = ConfigData['VMXOPTS']
 
 ErrorMessages = ""
 MAC = ""
@@ -60,6 +61,7 @@ parser.add_argument("-N", "--net", dest='NET', type=str, help="Network Interface
 parser.add_argument("-M", "--mac", dest='MAC', type=str, help="MAC address")
 parser.add_argument("-S", "--store", dest='STORE', type=str, help="vmfs Store | LeastUsed  ("  + str(STORE) + ")")
 parser.add_argument("-g", "--guestos", dest='GUESTOS', type=str, help="Guest OS. (" + str(GUESTOS) + ")")
+parser.add_argument("-o", "--options", dest='VMXOPTS', type=str, default='NIL', help="Comma list of VMX Options.")
 parser.add_argument('-V', '--verbose', dest='isVerbosearg', action='store_true', help="Enable Verbose mode  (" + str(isVerbose) + ")")
 parser.add_argument('--summary', dest='isSummaryarg', action='store_true', help="Display Summary  (" + str(isSummary) + ")")
 parser.add_argument("-u", "--updateDefaults", dest='UPDATE', action='store_true', help="Update Default VM settings stored in ~/.esxi-vm.yml")
@@ -100,11 +102,17 @@ if STORE == "":
     STORE = "LeastUsed"
 if args.GUESTOS:
     GUESTOS=args.GUESTOS
+if args.VMXOPTS == '' and VMXOPTS != '':
+    VMXOPTS=''
+if args.VMXOPTS and args.VMXOPTS != 'NIL':
+    VMXOPTS=args.VMXOPTS.split(",")
+
 
 if args.UPDATE:
     print "Saving new Defaults to ~/.esxi-vm.yml"
     ConfigData['isDryRun'] = isDryRun
     ConfigData['isVerbose'] = isVerbose
+    ConfigData['isSummary'] = isSummary
     ConfigData['HOST'] = HOST
     ConfigData['USER'] = USER
     ConfigData['PASSWORD'] = PASSWORD
@@ -117,6 +125,7 @@ if args.UPDATE:
     ConfigData['NET'] = NET
     ConfigData['ISO'] = ISO
     ConfigData['GUESTOS'] = GUESTOS
+    ConfigData['VMXOPTS'] = VMXOPTS
     SaveConfig(ConfigData)
     if NAME == "":
         sys.exit(0)
@@ -194,7 +203,7 @@ if MAC != "":
         print "ERROR: " + MAC + " Invalid MAC address."
         ErrorMessages += " " + MAC + " Invalid MAC address."
         CheckHasErrors = True
-  
+
 
 #
 #      Get from ESXi host if ISO exists
@@ -353,6 +362,33 @@ if NET != "None":
         VMX.append('ethernet0.addressType = "static"')
         VMX.append('ethernet0.address = "' + MAC + '"')
 
+#
+#   Merge extra VMX options
+for VMXopt in VMXOPTS:
+    try:
+        k,v = VMXopt.split("=")
+    except:
+        k=""
+        v=""
+    key = k.lstrip().strip()
+    value = v.lstrip().strip()
+    for i in VMX:
+        try:
+            ikey,ivalue = i.split("=")
+        except:
+            break
+        if ikey.lstrip().strip().lower() == key.lower():
+            index = VMX.index(i)
+            VMX[index] = ikey + " = " + value
+            break
+    else:
+        if key != '' and value != '':
+            VMX.append(key + " = " + value)
+
+if isVerbose and VMXOPTS != '':
+    print "VMX file:"
+    for i in VMX:
+        print i
 
 MyVM = FullPath + "/" + NAME
 if CheckHasErrors:
@@ -384,7 +420,7 @@ if not isDryRun and not CheckHasErrors:
         (stdin, stdout, stderr) = ssh.exec_command("vim-cmd solo/registervm " + MyVM + ".vmx")
         type(stdin)
         VMID = int(stdout.readlines()[0])
-        
+
         # Power on VM
         if isVerbose:
             print "Power ON VM"
@@ -453,7 +489,7 @@ if isSummary:
     if isVerbose:
         print "Format: " + DISKFORMAT
     print "DS Store: " + DSSTORE
-    print "Network: " + NET 
+    print "Network: " + NET
     if ISO:
         print "ISO: " + ISO
     if isVerbose:
@@ -472,5 +508,3 @@ else:
     else:
         print GeneratedMAC
     sys.exit(0)
-
-

@@ -209,5 +209,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Support
 -------
   Website : http://www.jintegrate.co
-
   github  : http://github.com/josenk/
+  bitcoin : 1HCTVkmSXepQahJfvuxQRhUMem1HpHq3Mq
+  paypal  : josenk@jintegrate.co
